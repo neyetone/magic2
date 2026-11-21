@@ -176,6 +176,10 @@
         </button>
     </div>
     <div class="recognized" id="recognized"></div>
+    <div class="recognized" id="ttsStatus"></div>
+    <div class="mic-row" style="padding-top:0;">
+        <button class="btn ghost" onclick="testSpeak()">🔊 试听播报</button>
+    </div>
 
     <!-- 选项 -->
     <div class="options">
@@ -421,14 +425,73 @@ function showMsg(text, warn){
     el.className = 'stage-msg' + (warn ? ' warn' : '');
 }
 
-function speak(text){
+/* 语音播报（TTS） */
+let voicesCache = [];
+let zhVoice = null;
+let ttsAvailable = false;
+let speakPausedRecognition = false;
+
+function loadVoices(){
     if(!('speechSynthesis' in window)) return;
+    voicesCache = window.speechSynthesis.getVoices() || [];
+    zhVoice = voicesCache.find(v=>/zh[-_]CN/i.test(v.lang))
+           || voicesCache.find(v=>/^zh/i.test(v.lang))
+           || null;
+    ttsAvailable = voicesCache.length > 0;
+}
+function showTTSStatus(text, warn){
+    const el = document.getElementById('ttsStatus');
+    if(!el) return;
+    el.innerText = text;
+    el.style.color = warn ? '#fbbf24' : '#9aa4b8';
+}
+function speak(text){
+    if(!('speechSynthesis' in window)){
+        showTTSStatus('当前浏览器不支持语音播报，请用手动点选查看位置', true);
+        return;
+    }
+    if(!ttsAvailable) loadVoices();
+    if(!ttsAvailable){
+        showTTSStatus('未检测到语音包，请在系统设置中开启中文语音', true);
+        return;
+    }
+    // 播报前暂停识别，避免麦克风通道压制播报声音
+    pauseRecognitionForSpeak();
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'zh-CN';
+    if(zhVoice) u.voice = zhVoice;
     u.rate = parseFloat(document.getElementById('rateSel').value) || 1;
     u.pitch = 1;
-    window.speechSynthesis.speak(u);
+    u.onstart = ()=> showTTSStatus('🔊 播报中：' + text, false);
+    u.onend = ()=>{
+        showTTSStatus('', false);
+        resumeRecognitionAfterSpeak();
+    };
+    u.onerror = ()=>{
+        showTTSStatus('播报中断，可点「试听播报」检测', true);
+        resumeRecognitionAfterSpeak();
+    };
+    // 延时入队，避开 cancel 竞态
+    setTimeout(()=>{
+        try{ window.speechSynthesis.speak(u); }
+        catch(e){ showTTSStatus('播报异常：' + e.message, true); }
+    }, 60);
+}
+function pauseRecognitionForSpeak(){
+    if(recognition && listening){
+        speakPausedRecognition = true;
+        try{ recognition.stop(); }catch(e){}
+    }
+}
+function resumeRecognitionAfterSpeak(){
+    if(speakPausedRecognition && listening){
+        speakPausedRecognition = false;
+        try{ recognition.start(); }catch(e){}
+    }
+}
+function testSpeak(){
+    speak('语音播报测试，红桃A，第十七张');
 }
 
 /* 历史 */
@@ -540,8 +603,8 @@ function initRecognition(){
         }
     };
     recognition.onend = ()=>{
-        if(listening){
-            // 持续监听：自动重启
+        // 播报暂停期间不自动重启，等播报结束后由 resumeRecognitionAfterSpeak 恢复
+        if(listening && !speakPausedRecognition){
             try{ recognition.start(); }catch(e){}
         }
     };
@@ -583,6 +646,17 @@ window.addEventListener('DOMContentLoaded', ()=>{
     renderPicker();
     renderHistory();
     initRecognition();
+    // 初始化语音包并监听异步加载
+    loadVoices();
+    if('speechSynthesis' in window){
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        if(!ttsAvailable){
+            showTTSStatus('正在加载语音包…', false);
+            setTimeout(loadVoices, 300);
+        }
+    }else{
+        showTTSStatus('当前浏览器不支持语音播报，可手动点选查看位置', true);
+    }
 });
 </script>
 </body>
