@@ -2,662 +2,228 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>语音牌序魔术师</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>备忘录预言画板</title>
 <style>
-    :root{
-        --bg:#0b0d12;
-        --panel:#151923;
-        --panel-2:#1d2330;
-        --line:#2a3142;
-        --gold:#e8c56b;
-        --red:#ef4444;
-        --text:#f3f4f6;
-        --text-2:#9aa4b8;
-        --green:#22c55e;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-    body{
-        background:radial-gradient(circle at 50% 0%, #1c2333 0%, #0b0d12 60%);
-        color:var(--text);
-        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
-        min-height:100vh;display:flex;justify-content:center;padding:12px;
-    }
-    .app{width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;}
-
-    /* 顶部 */
-    .top{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;}
-    .title{font-size:18px;font-weight:900;letter-spacing:1px;}
-    .title span{color:var(--gold);}
-    .deck-count{font-size:12px;color:var(--text-2);background:var(--panel);border:1px solid var(--line);padding:4px 10px;border-radius:20px;}
-
-    /* 结果舞台 */
-    .stage{
-        background:linear-gradient(160deg,#1b2130,#10131b);
-        border:1px solid var(--line);border-radius:22px;
-        padding:26px 18px;text-align:center;position:relative;overflow:hidden;
-        box-shadow:0 20px 50px -20px rgba(0,0,0,0.7);
-    }
-    .stage::before{
-        content:'';position:absolute;top:-70px;left:50%;transform:translateX(-50%);
-        width:260px;height:150px;background:radial-gradient(ellipse,rgba(232,197,107,0.12),transparent 70%);
-        pointer-events:none;
-    }
-    .stage-label{font-size:12px;color:var(--text-2);letter-spacing:2px;margin-bottom:14px;}
-    .result-card{
-        display:inline-flex;flex-direction:column;align-items:center;gap:6px;
-        min-height:120px;justify-content:center;
-    }
-    .big-card{
-        font-size:54px;font-weight:900;line-height:1.1;letter-spacing:1px;
-    }
-    .big-card.red{color:#f87171;}
-    .big-card.black{color:#e5e7eb;}
-    .big-pos{font-size:26px;font-weight:900;color:var(--gold);margin-top:6px;}
-    .big-pos small{font-size:14px;color:var(--text-2);font-weight:600;}
-    .stage-msg{font-size:15px;color:var(--text-2);min-height:24px;margin-top:8px;}
-    .stage-msg.warn{color:#fbbf24;}
-
-    /* 语音按钮 */
-    .mic-row{display:flex;justify-content:center;padding:4px 0;}
-    .btn-mic{
-        width:88px;height:88px;border-radius:50%;border:none;cursor:pointer;
-        background:linear-gradient(145deg,#2a3348,#171c28);
-        box-shadow:0 10px 30px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
-        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-        color:var(--text);transition:all .2s;
-    }
-    .btn-mic:active{transform:scale(0.95);}
-    .btn-mic .ico{font-size:32px;}
-    .btn-mic .txt{font-size:11px;color:var(--text-2);}
-    .btn-mic.listening{
-        background:linear-gradient(145deg,#7f1d1d,#450a0a);
-        box-shadow:0 0 0 6px rgba(239,68,68,0.18),0 10px 30px rgba(239,68,68,0.3);
-        animation:pulse 1.4s infinite;
-    }
-    .btn-mic.listening .txt{color:#fecaca;}
-    .btn-mic.disabled{opacity:.4;pointer-events:none;}
-    @keyframes pulse{
-        0%{box-shadow:0 0 0 0 rgba(239,68,68,0.35);}
-        70%{box-shadow:0 0 0 14px rgba(239,68,68,0);}
-        100%{box-shadow:0 0 0 0 rgba(239,68,68,0);}
-    }
-    .recognized{font-size:12px;color:var(--text-2);text-align:center;min-height:18px;}
-
-    /* 选项行 */
-    .options{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;}
-    .opt-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);}
-    .opt-item select{
-        background:var(--panel-2);color:var(--text);border:1px solid var(--line);
-        border-radius:8px;padding:5px 8px;font-size:12px;outline:none;
-    }
-    .switch{position:relative;width:40px;height:22px;background:var(--panel-2);border-radius:20px;cursor:pointer;border:1px solid var(--line);}
-    .switch.on{background:var(--gold);border-color:var(--gold);}
-    .switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;}
-    .switch.on::after{left:20px;}
-
-    /* 面板通用 */
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;}
-    .panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;}
-    .panel-head h3{font-size:14px;font-weight:900;}
-    .panel-head .arrow{color:var(--text-2);font-size:12px;}
-    .panel-body{padding:0 16px 16px;display:block;}
-    .panel-body.hide{display:none;}
-
-    textarea{
-        width:100%;min-height:130px;background:var(--panel-2);border:1px solid var(--line);
-        border-radius:12px;color:var(--text);padding:12px;font-size:13px;line-height:1.7;
-        font-family:inherit;outline:none;resize:vertical;
-    }
-    textarea:focus{border-color:var(--gold);}
-    .input-tip{font-size:11px;color:var(--text-2);margin:8px 0 10px;line-height:1.6;}
-    .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
-    .btn{
-        padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);
-        color:var(--text);font-size:13px;font-weight:700;cursor:pointer;
-    }
-    .btn.gold{background:var(--gold);color:#1a1405;border-color:var(--gold);}
-    .btn.ghost{background:transparent;}
-    .warn-text{font-size:12px;color:#fbbf24;margin-top:8px;line-height:1.6;}
-    .ok-text{font-size:12px;color:var(--green);margin-top:8px;}
-
-    /* 手动选牌网格 */
-    .picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-    .picker-col{display:flex;flex-direction:column;gap:6px;}
-    .picker-col .col-title{text-align:center;font-size:14px;padding:4px 0;}
-    .p-card{
-        background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
-        text-align:center;padding:7px 0;font-size:13px;font-weight:800;cursor:pointer;
-    }
-    .p-card.red{color:#f87171;}
-    .p-card.black{color:#e5e7eb;}
-    .p-card:active{background:var(--gold);color:#1a1405;}
-
-    /* 历史 */
-    .history{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
-    .h-item{
-        display:flex;justify-content:space-between;align-items:center;
-        background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;
-    }
-    .h-card{font-weight:900;}
-    .h-card.red{color:#f87171;}
-    .h-card.black{color:#e5e7eb;}
-    .h-pos{color:var(--gold);font-weight:800;}
-    .h-time{font-size:10px;color:var(--text-2);}
-    .empty{text-align:center;color:var(--text-2);font-size:12px;padding:16px 0;}
-
-    .note{font-size:11px;color:var(--text-2);line-height:1.7;padding:0 4px;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:#fff;
+  overflow:hidden;
+  font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display",sans-serif;
+  height:100vh;
+  position:relative;
+}
+#canvasWrap{
+  width:100vw;
+  height:100vh;
+  background:#ffffff;
+  position:absolute;
+  top:0;left:0;
+}
+#drawCanvas{
+  width:100%;
+  height:100%;
+  touch-action: manipulation;
+}
+/* 控制面板：默认隐藏 */
+.ctrl-panel{
+  position:fixed;
+  bottom:30px;
+  left:50%;transform:translateX(-50%);
+  background:#f6f6f6;
+  border-radius:24px;
+  padding:14px 18px;
+  display:none;
+  gap:10px;
+  z-index:100;
+  box-shadow:0 3px 18px rgba(0,0,0,0.1);
+}
+.ctrl-panel button{
+  border:none;background:#ffffff;
+  padding:10px 14px;border-radius:12px;font-size:14px;
+}
+/* 纯白遮罩，无任何文字 */
+.cover{
+  position:absolute;top:0;left:0;width:100vw;height:100vh;
+  background:#fff;
+  z-index:10;
+  transition:opacity 0.4s ease;
+}
+.cover.hide{opacity:0;pointer-events:none;}
+.tip{
+  position:fixed;top:22px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.72);color:#fff;padding:8px 16px;border-radius:99px;
+  font-size:14px;display:none;z-index:200;
+}
 </style>
 </head>
 <body>
-<div class="app">
-
-    <!-- 顶部 -->
-    <div class="top">
-        <div class="title">🎩 语音<span>牌序魔术师</span></div>
-        <div class="deck-count" id="deckCount">0 张牌</div>
-    </div>
-
-    <!-- 结果舞台 -->
-    <div class="stage">
-        <div class="stage-label">— 识别结果 —</div>
-        <div class="result-card">
-            <div class="big-card" id="bigCard">♠ ?</div>
-            <div class="big-pos" id="bigPos">等待叫牌…</div>
-        </div>
-        <div class="stage-msg" id="stageMsg">点下方麦克风，说出一张扑克牌</div>
-    </div>
-
-    <!-- 麦克风 -->
-    <div class="mic-row">
-        <button class="btn-mic" id="btnMic" onclick="toggleListen()">
-            <div class="ico">🎤</div>
-            <div class="txt" id="micTxt">开始听牌</div>
-        </button>
-    </div>
-    <div class="recognized" id="recognized"></div>
-    <div class="recognized" id="ttsStatus"></div>
-    <div class="mic-row" style="padding-top:0;">
-        <button class="btn ghost" onclick="testSpeak()">🔊 试听播报</button>
-    </div>
-
-    <!-- 选项 -->
-    <div class="options">
-        <div class="opt-item">
-            <span>倒序播报</span>
-            <div class="switch" id="switchReverse" onclick="toggleReverse()"></div>
-        </div>
-        <div class="opt-item">
-            <span>语速</span>
-            <select id="rateSel">
-                <option value="0.7">慢速</option>
-                <option value="1" selected>正常</option>
-                <option value="1.25">偏快</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- 牌序录入 -->
-    <div class="panel">
-        <div class="panel-head" onclick="togglePanel('order')">
-            <h3>🃏 自定义牌序录入</h3>
-            <span class="arrow" id="arrowOrder">收起 ▲</span>
-        </div>
-        <div class="panel-body" id="bodyOrder">
-            <div class="input-tip">
-                按从上到下的实际顺序填写，支持逗号 / 空格 / 换行分隔。<br>
-                写法任意：<b>红桃A</b>、<b>♥A</b>、<b>黑桃10</b>、<b>梅花K</b>、<b>方块Q</b>；口语别名（尖、勾、圈、皮蛋、凯）也能识别。
-            </div>
-            <textarea id="orderInput" placeholder="例如：&#10;♥A ♠K ♦Q ♣10 ♥7 …"></textarea>
-            <div class="btn-row" style="margin-top:10px;">
-                <button class="btn gold" onclick="saveOrder()">保存牌序</button>
-                <button class="btn" onclick="resetDefault()">重置标准52张</button>
-                <button class="btn ghost" onclick="clearOrder()">清空</button>
-            </div>
-            <div id="orderStatus"></div>
-        </div>
-    </div>
-
-    <!-- 手动选牌 -->
-    <div class="panel">
-        <div class="panel-head" onclick="togglePanel('picker')">
-            <h3>👆 手动点选兜底</h3>
-            <span class="arrow" id="arrowPicker">展开 ▼</span>
-        </div>
-        <div class="panel-body hide" id="bodyPicker">
-            <div class="picker" id="pickerGrid"></div>
-        </div>
-    </div>
-
-    <!-- 历史 -->
-    <div class="panel">
-        <div class="panel-head" onclick="togglePanel('history')">
-            <h3>📜 最近叫牌记录</h3>
-            <span class="arrow" id="arrowHistory">展开 ▼</span>
-        </div>
-        <div class="panel-body hide" id="bodyHistory">
-            <div class="history" id="historyList"><div class="empty">暂无记录</div></div>
-        </div>
-    </div>
-
-    <div class="note">
-        提示：语音识别需在 Chrome / Edge 浏览器（含手机端）打开并授予麦克风权限；iOS Safari 暂不支持语音识别，可使用「手动点选兜底」。牌序仅保存在本机浏览器，不上传任何服务器。
-    </div>
+<div id="canvasWrap">
+  <canvas id="drawCanvas"></canvas>
 </div>
+<!-- 纯白遮罩 -->
+<div class="cover" id="cover"></div>
+<div class="ctrl-panel" id="ctrl">
+  <button id="startRec">🎤 语音识别</button>
+  <button id="clearBtn">清空画布</button>
+  <button id="openCover">翻开</button>
+</div>
+<div class="tip" id="tip"></div>
 
 <script>
-/* ============================================================
- *  牌库基础数据
- * ============================================================ */
-const SUITS = {
-    hearts:  { symbol:'♥', red:true,  names:['红桃','红心','桃心','爱心','红桃心','♥','❤','♡'] },
-    diamonds:{ symbol:'♦', red:true,  names:['方块','方片','红砖','砖','方片砖','♦','♢'] },
-    clubs:   { symbol:'♣', red:false, names:['梅花','草花','花梅','草花梅','♣','♧'] },
-    spades:  { symbol:'♠', red:false, names:['黑桃','黑葵','葵','黑桃葵','♠','♤'] }
-};
-const RANKS = {
-    A:  { names:['A','a','尖','尖儿','阿','ace'] },
-    '2':{ names:['2','二','两'] },
-    '3':{ names:['3','三'] },
-    '4':{ names:['4','四'] },
-    '5':{ names:['5','五'] },
-    '6':{ names:['6','六'] },
-    '7':{ names:['7','七'] },
-    '8':{ names:['8','八'] },
-    '9':{ names:['9','九'] },
-    '10':{names:['10','十'] },
-    J:  { names:['J','j','勾','钩','勾子','钩儿'] },
-    Q:  { names:['Q','q','圈','皮蛋','queen'] },
-    K:  { names:['K','k','凯','凯子','老K','king'] }
-};
-const RANK_ORDER = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d');
+const cover = document.getElementById('cover');
+const ctrl = document.getElementById('ctrl');
+const tip = document.getElementById('tip');
+const startRecBtn = document.getElementById('startRec');
+const clearBtn = document.getElementById('clearBtn');
+const openCoverBtn = document.getElementById('openCover');
 
-/* 状态 */
-let deck = [];            // [{suit, rank, label, red}]
-let reverseMode = false;
-let history = [];
-let recognition = null;
-let listening = false;
-
-const LS_KEY = 'magic_deck_order_v1';
-
-/* ============================================================
- *  工具函数
- * ============================================================ */
-function toCN(n){
-    const CN = ['零','一','二','三','四','五','六','七','八','九'];
-    if(n <= 10) return CN[n];
-    if(n < 20) return '十' + (n % 10 ? CN[n%10] : '');
-    const t = Math.floor(n/10), o = n%10;
-    return CN[t] + '十' + (o ? CN[o] : '');
+function resizeCanvas(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 2.6;
+  ctx.strokeStyle="#1c1c1c";
 }
-function makeLabel(suitKey, rank){
-    return SUITS[suitKey].symbol + rank;
-}
-function defaultDeck(){
-    const out = [];
-    Object.keys(SUITS).forEach(sk=>{
-        RANK_ORDER.forEach(rk=>{
-            out.push({ suit:sk, rank:rk, label:makeLabel(sk,rk), red:SUITS[sk].red });
-        });
-    });
-    return out;
+resizeCanvas();
+window.addEventListener('resize',resizeCanvas);
+
+// 12星座简笔画
+const zodiacDraw = {
+  "白羊": [
+    [[210,240],[260,210],[290,245],[265,280],[220,270],[210,240]],
+    [[260,210],[275,170]],
+    [[290,245],[320,220]]
+  ],
+  "金牛": [
+    [[200,230],[280,225],[295,280],[240,300],[195,275],[200,230]],
+    [[200,230],[170,200]],
+    [[280,225],[310,195]]
+  ],
+  "双子": [
+    [[180,220],[230,200],[240,250],[190,270],[180,220]],
+    [[270,220],[320,200],[330,250],[280,270],[270,220]],
+    [[240,235],[270,235]]
+  ],
+  "巨蟹": [
+    [[210,230],[270,225],[280,270],[235,290],[200,265],[210,230]],
+    [[200,240],[170,210]],
+    [[280,240],[310,210]]
+  ],
+  "狮子": [
+    [[200,240],[275,215],[300,260],[260,295],[205,280],[200,240]],
+    [[275,215],[290,175]],
+    [[300,260],[330,270]]
+  ],
+  "处女": [
+    [[215,230],[270,220],[285,270],[240,290],[205,270],[215,230]],
+    [[240,245],[240,275]]
+  ],
+  "天秤": [
+    [[190,240],[300,240]],
+    [[230,210],[260,210]],
+    [[220,270],[270,270]]
+  ],
+  "天蝎": [
+    [[200,235],[275,225],[290,275],[240,295],[200,270],[200,235]],
+    [[290,250],[320,280]]
+  ],
+  "射手": [
+    [[200,230],[280,225],[295,275],[240,295],[200,270],[200,230]],
+    [[280,225],[320,190]]
+  ],
+  "摩羯": [
+    [[210,240],[270,220],[290,270],[240,290],[205,270],[210,240]],
+    [[210,240],[180,200]]
+  ],
+  "水瓶": [
+    [[190,230],[240,230]],
+    [[250,230],[300,230]],
+    [[210,255],[280,255]]
+  ],
+  "双鱼": [
+    [[200,240],[240,210],[250,270],[200,240]],
+    [[270,240],[310,210],[320,270],[270,240]],
+    [[245,240],[270,240]]
+  ]
 }
 
-/* ============================================================
- *  文本 → 牌 解析
- * ============================================================ */
-function parseCard(text){
-    if(!text) return null;
-    let t = text.trim();
-    // 去掉常见口语噪声
-    t = t.replace(/这张|那张|那张牌|这张牌|扑克牌|我要|请问|的|牌儿|牌/g, '').trim();
-    if(!t) return null;
+let pendingLines = [];
+function drawLines(lineList){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  pendingLines = [];
+  lineList.forEach(shape=>{
+    const points = shape.map(p=>[p[0]+cx-250, p[1]+cy-250]);
+    pendingLines.push(points);
+  })
+  pendingLines.forEach(points=>{
+    ctx.beginPath();
+    ctx.moveTo(points[0][0],points[0][1]);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i][0],points[i][1]);
+    ctx.stroke();
+  })
+}
 
-    // 1) 找花色（先符号后文字，避免"红桃"被"桃"之类截断）
-    let suitKey = null;
-    for(const sk of Object.keys(SUITS)){
-        for(const n of SUITS[sk].names){
-            if(t.includes(n)){ suitKey = sk; break; }
-        }
-        if(suitKey) break;
+// 语音识别
+let recognition;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SpeechRecognition){
+  recognition = new SpeechRecognition();
+  recognition.lang = "zh-CN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = (e)=>{
+    const words = e.results[0][0].transcript;
+    showTip("识别："+words);
+    let hit = null;
+    for(let key of Object.keys(zodiacDraw)){
+      if(words.includes(key)){hit = key;break;}
     }
-    // 2) 找点数：10 优先匹配，避免 "10" 被拆成 1 和 0
-    let rankKey = null;
-    const rankKeys = ['10', ...RANK_ORDER.filter(r=>r!=='10')];
-    for(const rk of rankKeys){
-        for(const n of RANKS[rk].names){
-            if(t.includes(n)){ rankKey = rk; break; }
-        }
-        if(rankKey) break;
-    }
-    if(!suitKey || !rankKey) return null;
-    return { suit:suitKey, rank:rankKey, label:makeLabel(suitKey,rankKey), red:SUITS[suitKey].red };
-}
-
-/* 录入字符串 → 牌序数组 */
-function parseOrderString(str){
-    if(!str) return { cards:[], warnings:[] };
-    const parts = str.split(/[,，、\s\n\r\t]+/).filter(Boolean);
-    const cards = [];
-    const warnings = [];
-    const seen = new Set();
-    parts.forEach(p=>{
-        const c = parseCard(p);
-        if(!c){ warnings.push(`无法识别「${p}」`); return; }
-        if(seen.has(c.label)){ warnings.push(`重复牌「${c.label}」已自动跳过`); return; }
-        seen.add(c.label);
-        cards.push(c);
-    });
-    return { cards, warnings };
-}
-
-/* ============================================================
- *  牌序存取与渲染
- * ============================================================ */
-function loadDeck(){
-    try{
-        const raw = localStorage.getItem(LS_KEY);
-        if(raw){
-            const arr = JSON.parse(raw);
-            if(Array.isArray(arr) && arr.length){ deck = arr; return; }
-        }
-    }catch(e){}
-    deck = defaultDeck();
-}
-function persistDeck(){
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(deck)); }catch(e){}
-}
-function refreshCount(){
-    document.getElementById('deckCount').innerText = deck.length + ' 张牌';
-}
-function renderPicker(){
-    const grid = document.getElementById('pickerGrid');
-    let html = '';
-    Object.keys(SUITS).forEach(sk=>{
-        const s = SUITS[sk];
-        html += `<div class="picker-col"><div class="col-title ${s.red?'red':'black'}">${s.symbol}</div>`;
-        RANK_ORDER.forEach(rk=>{
-            const label = makeLabel(sk,rk);
-            html += `<div class="p-card ${s.red?'red':'black'}" onclick="findCard('${label}')">${rk}</div>`;
-        });
-        html += `</div>`;
-    });
-    grid.innerHTML = html;
-}
-
-/* ============================================================
- *  查找 + 播报
- * ============================================================ */
-function findCard(label){
-    if(!deck.length){ showMsg('牌序为空，请先录入', true); return; }
-    const idx = deck.findIndex(c=>c.label === label);
-    if(idx === -1){
-        showMsg('这张牌不在牌序中', true);
-        bigCard('?', false);
-        bigPos('未收录');
-        speak('抱歉，这张牌不在牌序里');
-        return;
-    }
-    const card = deck[idx];
-    const pos = idx + 1;
-    const revPos = deck.length - idx;
-    bigCard(card.label, card.red);
-    bigPos(reverseMode ? `倒数第 ${toCN(revPos)} 张` : `第 ${toCN(pos)} 张`);
-    showMsg(`正序第 ${pos} 张${reverseMode ? ' · 倒数第 '+revPos+' 张' : ''}`, false);
-    // 语音播报
-    const posText = reverseMode ? `倒数第${toCN(revPos)}张` : `第${toCN(pos)}张`;
-    speak(`${card.label.replace(/♥|♦|♣|♠/g, suitName(card.suit))}，${posText}`);
-    addHistory(card, pos, revPos);
-}
-function suitName(sk){
-    return { hearts:'红桃', diamonds:'方块', clubs:'梅花', spades:'黑桃' }[sk] || '';
-}
-function bigCard(label, red){
-    const el = document.getElementById('bigCard');
-    el.innerText = label;
-    el.className = 'big-card ' + (red ? 'red' : 'black');
-}
-function bigPos(text){ document.getElementById('bigPos').innerText = text; }
-function showMsg(text, warn){
-    const el = document.getElementById('stageMsg');
-    el.innerText = text;
-    el.className = 'stage-msg' + (warn ? ' warn' : '');
-}
-
-/* 语音播报（TTS） */
-let voicesCache = [];
-let zhVoice = null;
-let ttsAvailable = false;
-let speakPausedRecognition = false;
-
-function loadVoices(){
-    if(!('speechSynthesis' in window)) return;
-    voicesCache = window.speechSynthesis.getVoices() || [];
-    zhVoice = voicesCache.find(v=>/zh[-_]CN/i.test(v.lang))
-           || voicesCache.find(v=>/^zh/i.test(v.lang))
-           || null;
-    ttsAvailable = voicesCache.length > 0;
-}
-function showTTSStatus(text, warn){
-    const el = document.getElementById('ttsStatus');
-    if(!el) return;
-    el.innerText = text;
-    el.style.color = warn ? '#fbbf24' : '#9aa4b8';
-}
-function speak(text){
-    if(!('speechSynthesis' in window)){
-        showTTSStatus('当前浏览器不支持语音播报，请用手动点选查看位置', true);
-        return;
-    }
-    if(!ttsAvailable) loadVoices();
-    if(!ttsAvailable){
-        showTTSStatus('未检测到语音包，请在系统设置中开启中文语音', true);
-        return;
-    }
-    // 播报前暂停识别，避免麦克风通道压制播报声音
-    pauseRecognitionForSpeak();
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN';
-    if(zhVoice) u.voice = zhVoice;
-    u.rate = parseFloat(document.getElementById('rateSel').value) || 1;
-    u.pitch = 1;
-    u.onstart = ()=> showTTSStatus('🔊 播报中：' + text, false);
-    u.onend = ()=>{
-        showTTSStatus('', false);
-        resumeRecognitionAfterSpeak();
-    };
-    u.onerror = ()=>{
-        showTTSStatus('播报中断，可点「试听播报」检测', true);
-        resumeRecognitionAfterSpeak();
-    };
-    // 延时入队，避开 cancel 竞态
-    setTimeout(()=>{
-        try{ window.speechSynthesis.speak(u); }
-        catch(e){ showTTSStatus('播报异常：' + e.message, true); }
-    }, 60);
-}
-function pauseRecognitionForSpeak(){
-    if(recognition && listening){
-        speakPausedRecognition = true;
-        try{ recognition.stop(); }catch(e){}
-    }
-}
-function resumeRecognitionAfterSpeak(){
-    if(speakPausedRecognition && listening){
-        speakPausedRecognition = false;
-        try{ recognition.start(); }catch(e){}
-    }
-}
-function testSpeak(){
-    speak('语音播报测试，红桃A，第十七张');
-}
-
-/* 历史 */
-function addHistory(card, pos, revPos){
-    const time = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
-    history.unshift({ label:card.label, red:card.red, pos, revPos, time });
-    if(history.length > 12) history.pop();
-    renderHistory();
-}
-function renderHistory(){
-    const box = document.getElementById('historyList');
-    if(!history.length){ box.innerHTML = '<div class="empty">暂无记录</div>'; return; }
-    box.innerHTML = history.map(h=>`
-        <div class="h-item">
-            <div>
-                <span class="h-card ${h.red?'red':'black'}">${h.label}</span>
-                <span class="h-time" style="margin-left:8px;">${h.time}</span>
-            </div>
-            <div class="h-pos">第 ${h.pos} 张${reverseMode ? ' · 倒数 '+h.revPos : ''}</div>
-        </div>`).join('');
-}
-
-/* ============================================================
- *  牌序录入操作
- * ============================================================ */
-function saveOrder(){
-    const str = document.getElementById('orderInput').value;
-    const { cards, warnings } = parseOrderString(str);
-    const status = document.getElementById('orderStatus');
-    if(!cards.length){
-        status.innerHTML = '<div class="warn-text">没有解析出任何有效牌，请检查格式。</div>';
-        return;
-    }
-    deck = cards;
-    persistDeck();
-    refreshCount();
-    let html = `<div class="ok-text">✅ 已保存 ${cards.length} 张牌。</div>`;
-    if(warnings.length) html += `<div class="warn-text">${warnings.join('<br>')}</div>`;
-    status.innerHTML = html;
-    showMsg('牌序已保存，共 ' + cards.length + ' 张', false);
-}
-function resetDefault(){
-    deck = defaultDeck();
-    persistDeck();
-    refreshCount();
-    document.getElementById('orderInput').value = deck.map(c=>c.label).join(' ');
-    document.getElementById('orderStatus').innerHTML = '<div class="ok-text">✅ 已重置为标准 52 张顺序。</div>';
-}
-function clearOrder(){
-    deck = [];
-    persistDeck();
-    refreshCount();
-    document.getElementById('orderInput').value = '';
-    document.getElementById('orderStatus').innerHTML = '<div class="warn-text">已清空牌序。</div>';
-}
-function fillInputFromDeck(){
-    document.getElementById('orderInput').value = deck.map(c=>c.label).join(' ');
-}
-
-/* ============================================================
- *  面板折叠 / 开关
- * ============================================================ */
-function togglePanel(name){
-    const body = document.getElementById('body'+name[0].toUpperCase()+name.slice(1));
-    const arrow = document.getElementById('arrow'+name[0].toUpperCase()+name.slice(1));
-    body.classList.toggle('hide');
-    arrow.innerText = body.classList.contains('hide') ? '展开 ▼' : '收起 ▲';
-}
-function toggleReverse(){
-    reverseMode = !reverseMode;
-    document.getElementById('switchReverse').classList.toggle('on', reverseMode);
-    renderHistory();
-}
-
-/* ============================================================
- *  语音识别
- * ============================================================ */
-function initRecognition(){
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SR){
-        document.getElementById('btnMic').classList.add('disabled');
-        document.getElementById('micTxt').innerText = '不支持语音';
-        document.getElementById('recognized').innerText = '当前浏览器不支持语音识别，请用手动点选';
-        return;
-    }
-    recognition = new SR();
-    recognition.lang = 'zh-CN';
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    recognition.onresult = (e)=>{
-        const last = e.results[e.results.length - 1];
-        const text = last[0].transcript.trim();
-        if(!text) return;
-        document.getElementById('recognized').innerText = '听到：' + text;
-        const card = parseCard(text);
-        if(card){ findCard(card.label); }
-        else{
-            showMsg('没有听清是哪张牌，请再说一遍', true);
-            speak('没有听清，请再说一遍');
-        }
-    };
-    recognition.onerror = (e)=>{
-        if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
-            showMsg('麦克风权限被拒绝，请在浏览器设置中开启', true);
-            stopListenUI();
-        }else if(e.error === 'no-speech'){
-            showMsg('没有检测到声音，请靠近再说一遍', true);
-        }
-    };
-    recognition.onend = ()=>{
-        // 播报暂停期间不自动重启，等播报结束后由 resumeRecognitionAfterSpeak 恢复
-        if(listening && !speakPausedRecognition){
-            try{ recognition.start(); }catch(e){}
-        }
-    };
-}
-function toggleListen(){
-    if(!recognition) return;
-    if(listening){ stopListen(); }
-    else{ startListen(); }
-}
-function startListen(){
-    try{
-        recognition.start();
-        listening = true;
-        document.getElementById('btnMic').classList.add('listening');
-        document.getElementById('micTxt').innerText = '正在听…';
-        showMsg('请说出一张扑克牌，例如：红桃 A', false);
-    }catch(e){}
-}
-function stopListen(){
-    listening = false;
-    try{ recognition.stop(); }catch(e){}
-    stopListenUI();
-}
-function stopListenUI(){
-    document.getElementById('btnMic').classList.remove('listening');
-    document.getElementById('micTxt').innerText = '开始听牌';
-}
-document.addEventListener('visibilitychange', ()=>{
-    if(document.hidden && listening) stopListen();
-});
-
-/* ============================================================
- *  初始化
- * ============================================================ */
-window.addEventListener('DOMContentLoaded', ()=>{
-    loadDeck();
-    refreshCount();
-    fillInputFromDeck();
-    renderPicker();
-    renderHistory();
-    initRecognition();
-    // 初始化语音包并监听异步加载
-    loadVoices();
-    if('speechSynthesis' in window){
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        if(!ttsAvailable){
-            showTTSStatus('正在加载语音包…', false);
-            setTimeout(loadVoices, 300);
-        }
+    if(hit){
+      drawLines(zodiacDraw[hit]);
+      showTip("✅ 已记录："+hit+"座");
     }else{
-        showTTSStatus('当前浏览器不支持语音播报，可手动点选查看位置', true);
+      showTip("❌ 识别不到，重试");
     }
+  }
+  recognition.onerror = ()=>showTip("麦克风授权失败");
+}
+startRecBtn.onclick = ()=>{
+  if(!recognition) return showTip("浏览器不支持语音识别，请用Chrome/Edge");
+  recognition.start();
+  showTip("请说出星座...");
+}
+clearBtn.onclick = ()=>{ctx.clearRect(0,0,canvas.width,canvas.height);pendingLines=[];}
+openCoverBtn.onclick = ()=>{cover.classList.add('hide');}
+
+// ========== 长按唤出控制面板（按住画布 600ms） ==========
+let longPressTimer = null;
+canvas.addEventListener('touchstart', ()=>{
+  longPressTimer = setTimeout(()=>{
+    if(ctrl.style.display === "block"){
+      ctrl.style.display = "none";
+    }else{
+      ctrl.style.display = "block";
+    }
+  },600);
 });
+canvas.addEventListener('touchend', ()=>{
+  clearTimeout(longPressTimer);
+});
+canvas.addEventListener('touchmove', ()=>{
+  clearTimeout(longPressTimer);
+});
+
+function showTip(text){
+  tip.innerText = text;
+  tip.style.display="block";
+  setTimeout(()=>tip.style.display="none",1400);
+}
 </script>
 </body>
 </html>
